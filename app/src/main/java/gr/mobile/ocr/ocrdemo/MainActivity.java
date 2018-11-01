@@ -1,5 +1,6 @@
 package gr.mobile.ocr.ocrdemo;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -13,9 +14,8 @@ import android.util.Log;
 import android.view.View;
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import io.card.payment.CardIOActivity;
-import io.card.payment.CardType;
-import io.card.payment.CreditCard;
+import cards.pay.paycardsrecognizer.sdk.Card;
+import cards.pay.paycardsrecognizer.sdk.ScanCardIntent;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -57,27 +57,21 @@ public class MainActivity extends AppCompatActivity {
         String outStr = new String();
         Bitmap cardTypeImage = null;
 
-        if (requestCode == REQUEST_SCAN && data != null && data.hasExtra(CardIOActivity.EXTRA_SCAN_RESULT)) {
-            CreditCard result = data.getParcelableExtra(CardIOActivity.EXTRA_SCAN_RESULT);
-            if (result != null) {
-                outStr += "Card number: " + result.getRedactedCardNumber() + "\n";
-                cardNumber = result.getFormattedCardNumber();
+        if (requestCode == REQUEST_SCAN) {
+            if (resultCode == Activity.RESULT_OK) {
+                Card card = data.getParcelableExtra(ScanCardIntent.RESULT_PAYCARDS_CARD);
+                if (BuildConfig.DEBUG) Log.i(TAG, "Card info: " + card);
+            } else if (resultCode == Activity.RESULT_CANCELED) {
+                @ScanCardIntent.CancelReason final int reason;
+                if (data != null) {
+                    reason = data.getIntExtra(ScanCardIntent.RESULT_CANCEL_REASON, ScanCardIntent.BACK_PRESSED);
+                } else {
+                    reason = ScanCardIntent.BACK_PRESSED;
+                }
 
-                CardType cardType = result.getCardType();
-                cardTypeImage = cardType.imageBitmap(this);
-                outStr += "Card type: " + cardType.name() + cardType.getDisplayName(null) + "\n";
+            } else if (resultCode == ScanCardIntent.RESULT_CODE_ERROR) {
+                Log.i(TAG, "Scan failed");
             }
-
-        Bitmap card = CardIOActivity.getCapturedCardImage(data);
-        resultImage.setImageBitmap(card);
-        resultCardTypeImage.setImageBitmap(cardTypeImage);
-
-        Log.i(TAG, "Set result: " + outStr);
-
-        resultTextView.setText(outStr);
-
-        startNextActivity(cardNumber);
-
         }
     }
 
@@ -96,17 +90,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onScannButtonClicked() {
-        startActivity(new Intent(MainActivity.this, ScanCardActivity.class));
-//        Intent scannCardIntent = new Intent(this, CardIOActivity.class)
-//                .putExtra(CardIOActivity.EXTRA_NO_CAMERA, false)
-//                .putExtra(CardIOActivity.EXTRA_GUIDE_COLOR, Color.BLUE)
-//                .putExtra(CardIOActivity.EXTRA_SUPPRESS_CONFIRMATION, true)
-//                .putExtra(CardIOActivity.EXTRA_RETURN_CARD_IMAGE, true);
-//        try {
-//            scannCardIntent.putExtra(CardIOActivity.EXTRA_UNBLUR_DIGITS, unblurDigits);
-//        } catch(NumberFormatException ignored) {}
-//
-//        startActivityForResult(scannCardIntent, REQUEST_SCAN);
+        Intent intent = new ScanCardIntent.Builder(this).build();
+        startActivityForResult(intent, REQUEST_SCAN);
     }
 
 
